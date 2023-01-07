@@ -1,3 +1,4 @@
+% First Control Law
 %%
 clc;
 clear all;
@@ -15,8 +16,8 @@ dt = 0.1;       % Time step
 N = (tf-t0)/dt; % Iterations
 t = t0:dt:tf;
 n=4;            % No of Robots
-xc = (t);       % X coordinate of virtual frame
-yc = (t);       % Y coordinate of virtual frame
+xc = 5*sin(t);       % X coordinate of virtual frame
+yc = 5*cos(t);       % Y coordinate of virtual frame
 theta_c = 0;    % Orientation of virtual frame w.r.t inertial frame
 zeta = [xc yc theta_c];  % State of virtual coordinate frame
 G = [[1 2 0 2];          % Interaction Topology (represent that how other
@@ -36,15 +37,15 @@ rf_d = [[-1 1];            % Desired deviation w.r.t virtual coordinate frame
         [1 -1];
         [-1 -1]];
 % r_d = rf_d;    
-r= [[-4 2];            % Initial position of all robots
-    [2 3];
-    [2 -4];
-    [-4 -2]];
+r0=  [[-3 2];            % Initial position of all robots
+    [0 0];
+    [7 9];
+    [-3 8]];
 R_d = zeros(2*(length(t)-1), g(1));   % Desired position-time data storage
 Xd = zeros(g(1),(tf - t0)/(dt));      % Desired X-position data storage
 Yd = zeros(size(Xd));                 % Desired Y-position data storage
 X = zeros(2*(length(t)-1)+2, g(1));   % Real position-time data storage
-X(1:2,:) = r';                        % Initialize the real position at t=t0
+X(1:2,:) = r0';                        % Initialize the real position at t=t0
 
 %% State Transition Matrix 'R_d'
 
@@ -85,19 +86,20 @@ for i = 1:(length(t)-1)
         p = [Xd_dot(j,i); Yd_dot(j,i)];
         q = [X(2*i-1,j); X(2*i,j)];
         r = [R_d(2*i-1,j); R_d(2*i,j)];
-        Xdot = p - (alpha*(q-r));        % Control Law (Kinematic Equation)
+        u = p - (alpha*(q-r));        % Control Law (Kinematic Equation)
+        Xdot = u;
         X(2*i+1:2*i+2,j) = X(2*i-1:2*i,j) + Xdot*dt;   % Euler Integration
     end
 end
 
 %% plot without animation
 
-% for i=1:2:length(t)-1
-%     plot(X(i,:),X(i+1,:),'*')
-%     xlim([-2,10]);
-%     ylim([-2,10]);
-%     hold on
-% end
+for i=1:2:2*(length(t)-1)
+    plot([X(i,:),X(i,1)],[X(i+1,:),X(i+1,1)],'-')
+    xlim([min(min(X))-1,max(max(X))+1]);
+    ylim([min(min(X))-1,max(max(X))+1]);
+    hold on
+end
 
 
 %% Animate and save video
@@ -106,10 +108,10 @@ figure()
 %%% create list of colors %%%
 C = {'k','b','r','g'}; % list of 4 colors
 cl= 1;
-%%% plot initial positions %%%
+%% plot initial positions %%%
 % for i = 1:2:2*length(t)-1
 %         hold on
-%         plot(X(i,1),X(i+1,1),'LineWidth',2,'color',C{cl},'marker','o');
+%         plot([X(i,:),X(i,1)],[X(i+1,:),X(i+1,1)],'LineWidth',2,'color',C{cl},'marker','o');
 %         cl = cl + 1;
 %         if cl == 5
 %             cl = 1;
@@ -120,8 +122,8 @@ c =1;
 myVideo = VideoWriter('myVideoFile','MPEG-4'); %open video file
 myVideo.FrameRate = 10;  %can adjust this, 5 - 10 works well for me
 open(myVideo)
-u = uicontrol('Style','slider','Position',[10 50 20 340],... % create slider indicating time remaining
-    'Min',1,'Max',N,'Value',1);
+u = uicontrol('Style','slider',...% create slider indicating time remaining
+    'Min',1,'Max',201,'Value',1);
 %%% animate using drawnow %%%
 
     for i = 1:2:2*length(t)-1
@@ -129,15 +131,16 @@ u = uicontrol('Style','slider','Position',[10 50 20 340],... % create slider ind
         xlim([min(min(X))-1,max(max(X))+1]);
         ylim([min(min(X))-1,max(max(X))+1]);
         drawnow limitrate;
-        pause(0.01)
+%       pause(0.01)
+        frame = getframe(gcf);
+        writeVideo(myVideo, frame);    % save video as MP4
         clf;
         c = c + 1;
         if c == 4
             c = 1;
         end
+        
     end
-    u.Value = i; % update slider
-    frame = getframe(gcf);
-    writeVideo(myVideo, frame); % save video as MP4
-
+%     u.Value = i; % update slider
+     
 close(myVideo)
